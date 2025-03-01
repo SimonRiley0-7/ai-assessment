@@ -38,7 +38,7 @@ export default function AssessmentTool() {
   const [results, setResults] = useState(null);
   const [user, setUser] = useState(null);
   const synthRef = useRef(null);
-  const speechRecognitionRef = useRef<typeof SpeechRecognition | null>(null);
+  const speechRecognitionRef = useRef(null);
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   // New state for AI evaluation
