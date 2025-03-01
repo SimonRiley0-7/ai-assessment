@@ -8,9 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Mic, Speaker, FileUp, Send, Play, Square, X, CheckCircle, XCircle, Loader2 } from "lucide-react";
-import { Slider } from "@/components/ui/slider";
+import { Mic, Speaker, FileUp, CheckCircle, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -22,15 +20,28 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
 } from 'recharts';
+
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof webkitSpeechRecognition;
+  }
+
+  var SpeechRecognition: {
+    prototype: typeof SpeechRecognition;
+    new (): typeof SpeechRecognition;
+  };
+
+  var webkitSpeechRecognition: {
+    prototype: typeof SpeechRecognition;
+    new (): typeof SpeechRecognition;
+  };
+}
 
 export default function AssessmentTool() {
   const [activeView, setActiveView] = useState("assessment"); // "assessment", "results", "login"
   const [currentTab, setCurrentTab] = useState("mcq");
-  const [isListening, setIsListening] = useState(false);
   const [isReading, setIsReading] = useState(false);
   const [userAnswer, setUserAnswer] = useState("");
   const [mcqAnswer, setMcqAnswer] = useState("");
@@ -42,57 +53,67 @@ export default function AssessmentTool() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [results, setResults] = useState(null);
   const [user, setUser] = useState(null);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+  const speechRecognitionRef = useRef<typeof SpeechRecognition | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState("");
   // New state for AI evaluation
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [aiEvaluations, setAiEvaluations] = useState([]);
   
-  const speechRecognitionRef = useRef(null);
-  const synthRef = useRef(null);
   const audioRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   
   // Initialize Web Speech API on component mount
   useEffect(() => {
     // Initialize speech synthesis
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
       synthRef.current = window.speechSynthesis;
     }
-    
+
     // Initialize speech recognition if available
-    if (typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
       speechRecognitionRef.current = new SpeechRecognition();
-      speechRecognitionRef.current.continuous = true;
-      speechRecognitionRef.current.interimResults = true;
-      
-      speechRecognitionRef.current.onresult = (event) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        setUserAnswer(transcript);
-      };
-      
-      speechRecognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error', event.error);
-        setIsListening(false);
-        
-        let errorMessage = `Error: ${event.error}. Please try again.`;
-        if (event.error === 'network') {
-          errorMessage = "Network error detected. Please check your internet connection and try again.";
-        }
-        
-        toast({
-          title: "Speech Recognition Error",
-          description: errorMessage,
-          variant: "destructive"
-        });
-      };
+
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.continuous = true;
+        speechRecognitionRef.current.interimResults = true;
+
+        speechRecognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+          let newTranscript = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            newTranscript += event.results[i][0].transcript;
+          }
+          setTranscript(newTranscript);
+        };
+
+        speechRecognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
+          console.error("Speech recognition error", event.error);
+          setIsListening(false);
+
+          let errorMessage = `Error: ${event.error}. Please try again.`;
+          if (event.error === "network") {
+            errorMessage =
+              "Network error detected. Please check your internet connection and try again.";
+          }
+
+          toast({
+            title: "Speech Recognition Error",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        };
+      }
     }
-    
-    // Fetch sample assessment
+
+    // Fetch sample assessment (assuming this function exists)
     fetchSampleAssessment();
-    
+
+    // Define timer variable for cleanup
+    let timer: NodeJS.Timeout | null = null;
+
     return () => {
       // Cleanup speech synthesis and recognition
       if (synthRef.current) {
@@ -102,7 +123,7 @@ export default function AssessmentTool() {
         speechRecognitionRef.current.abort();
       }
       if (timer) {
-        clearInterval(timer);
+        clearTimeout(timer);
       }
     };
   }, []);
@@ -1031,3 +1052,4 @@ const ResultsView = () => (
     </div>
   );
 }
+
