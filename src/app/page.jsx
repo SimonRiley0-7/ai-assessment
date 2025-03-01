@@ -22,22 +22,6 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof webkitSpeechRecognition;
-  }
-
-  var SpeechRecognition: {
-    prototype: typeof SpeechRecognition;
-    new (): typeof SpeechRecognition;
-  };
-
-  var webkitSpeechRecognition: {
-    prototype: typeof SpeechRecognition;
-    new (): typeof SpeechRecognition;
-  };
-}
 
 export default function AssessmentTool() {
   const [activeView, setActiveView] = useState("assessment"); // "assessment", "results", "login"
@@ -81,7 +65,7 @@ export default function AssessmentTool() {
         speechRecognitionRef.current.continuous = true;
         speechRecognitionRef.current.interimResults = true;
 
-        speechRecognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+        speechRecognitionRef.current.onresult = (event) => {
           let newTranscript = "";
           for (let i = event.resultIndex; i < event.results.length; i++) {
             newTranscript += event.results[i][0].transcript;
@@ -89,7 +73,7 @@ export default function AssessmentTool() {
           setTranscript(newTranscript);
         };
 
-        speechRecognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
+        speechRecognitionRef.current.onerror = (event) => {
           console.error("Speech recognition error", event.error);
           setIsListening(false);
 
@@ -112,7 +96,7 @@ export default function AssessmentTool() {
     fetchSampleAssessment();
 
     // Define timer variable for cleanup
-    let timer: NodeJS.Timeout | null = null;
+    let timer = null;
 
     return () => {
       // Cleanup speech synthesis and recognition
