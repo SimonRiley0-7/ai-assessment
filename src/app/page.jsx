@@ -37,7 +37,7 @@ export default function AssessmentTool() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [results, setResults] = useState(null);
   const [user, setUser] = useState(null);
-  const synthRef = useRef<SpeechSynthesis | null>(null);
+  const synthRef = useRef(null);
   const speechRecognitionRef = useRef<typeof SpeechRecognition | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
