@@ -54,35 +54,35 @@ export default function AssessmentTool() {
     if (typeof window !== "undefined" && window.speechSynthesis) {
       synthRef.current = window.speechSynthesis;
     }
-
+  
     // Initialize speech recognition if available
     if (typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       speechRecognitionRef.current = new SpeechRecognition();
-
+  
       if (speechRecognitionRef.current) {
         speechRecognitionRef.current.continuous = true;
         speechRecognitionRef.current.interimResults = true;
-
+  
         speechRecognitionRef.current.onresult = (event) => {
           let newTranscript = "";
           for (let i = event.resultIndex; i < event.results.length; i++) {
             newTranscript += event.results[i][0].transcript;
           }
           setTranscript(newTranscript);
+          // Update the user answer with the transcript
+          setUserAnswer(prevAnswer => prevAnswer + " " + newTranscript);
         };
-
+  
         speechRecognitionRef.current.onerror = (event) => {
           console.error("Speech recognition error", event.error);
           setIsListening(false);
-
+  
           let errorMessage = `Error: ${event.error}. Please try again.`;
           if (event.error === "network") {
-            errorMessage =
-              "Network error detected. Please check your internet connection and try again.";
+            errorMessage = "Network error detected. Please check your internet connection and try again.";
           }
-
+  
           toast({
             title: "Speech Recognition Error",
             description: errorMessage,
@@ -216,6 +216,8 @@ export default function AssessmentTool() {
       }
       
       try {
+        // Clear the transcript before starting
+        setTranscript("");
         speechRecognitionRef.current.start();
         setIsListening(true);
       } catch (error) {
@@ -934,8 +936,10 @@ const ResultsView = () => (
                       placeholder="Type your answer here..." 
                       value={userAnswer}
                       onChange={(e) => updateAnswer(e.target.value)}
-                      className="min-h-[150px]"
+                      className="min-h-[150px] w-full p-2"
+                      style={{ resize: 'vertical' }}
                     />
+                    
                     <div className="absolute bottom-2 right-2 flex space-x-2">
                       <Button 
                         variant="outline" 
@@ -976,14 +980,23 @@ const ResultsView = () => (
                 <div className="space-y-6">
                   <p>{currentQ.question}</p>
                   
-                  <div className="border rounded-md p-4 bg-black text-white font-mono h-[150px] overflow-y-auto">
-                    <Textarea 
-                      className="bg-transparent resize-none border-0 h-full focus:ring-0"
+                  <div className="border rounded-md bg-black text-white font-mono">
+                    <textarea 
+                      className="bg-transparent min-h-[150px] w-full border-0 text-white font-mono p-2 focus-visible:ring-0 focus-visible:ring-offset-0"
                       value={userAnswer}
-                      onChange={(e) => updateAnswer(e.target.value)}
+                      onChange={(e) => {
+                        const newValue = e.target.value;
+                        setUserAnswer(newValue);
+                        
+                        // Update the answers array
+                        const updatedAnswers = [...answers];
+                        updatedAnswers[currentQuestion].answer = newValue;
+                        setAnswers(updatedAnswers);
+                      }}
                       placeholder="# Enter your code here"
                     />
                   </div>
+
                   
                   <div className="flex space-x-2">
                     <Button variant="outline" className="flex items-center gap-2">
